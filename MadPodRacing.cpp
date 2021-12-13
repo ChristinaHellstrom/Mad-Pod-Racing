@@ -127,9 +127,10 @@ private:
     bool m_next_checkpoint_selected = false;
 
     // Constants
-    float BREAK_DISTANCE = 1500.0f;
+    float BREAK_DISTANCE = 1200.0f;
+    int PREDICT_DISTANCE = 2000;
     float TARGET_DISTANCE = 500.0f;
-    float CHECK_ANGLE = 2.0f;
+    float CHECK_ANGLE = 3.0f;
     int HIT_SPEED = 500;
     float PI = 3.14159265f;
 
@@ -271,10 +272,10 @@ public:
         string first_round = m_first_round ? "No" : "OK";
         string speed_txt = speed > HIT_SPEED ? "OK" : "No";
         string angle_txt = angle < CHECK_ANGLE ? "OK" : "No";
-        string distance_txt = m_current_state->next_checkpoint_dist < BREAK_DISTANCE ? "OK" : "No";
+        string distance_txt = m_current_state->next_checkpoint_dist < PREDICT_DISTANCE ? "OK" : "No";
 
         cerr << "Predict first: " << first_round << " Speed: " << speed_txt << " Angle: " << angle_txt << " Distance: " << distance_txt << endl;
-        return !m_first_round && speed > HIT_SPEED && angle < CHECK_ANGLE&& m_current_state->next_checkpoint_dist < 2000;
+        return !m_first_round && speed > HIT_SPEED && angle < CHECK_ANGLE&& m_current_state->next_checkpoint_dist < PREDICT_DISTANCE;
     }
 
     string GetOutputString()
