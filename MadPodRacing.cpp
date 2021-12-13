@@ -16,6 +16,9 @@ float lerp(float a, float b, float f)
     return a + f * (b - a);
 }
 
+//
+// Class for a point (x, y)
+//
 class Point
 {
 public:
@@ -28,13 +31,13 @@ public:
         y = 0;
     }
 
-    Point(int _x, int _y)
+    Point(const int _x, const int _y)
     {
         x = _x;
         y = _y;
     }
 
-    void Set(int _x, int _y)
+    void Set(const int _x, const int _y)
     {
         x = _x;
         y = _y;
@@ -51,6 +54,9 @@ public:
         return *this;
     }
 
+    //
+    // Distance to another point
+    //
     int Distance(const Point& other) const
     {
         int delta_x = (x - other.x);
@@ -60,12 +66,12 @@ public:
         return sqrt(delta_x * delta_x + delta_y * delta_y);
     }
 
-    Point operator+(const Point& other)
+    Point operator+(const Point& other) const
     {
         return Point(x + other.x, y + other.y);
     }
 
-    Point operator-(const Point& other)
+    Point operator-(const Point& other) const
     {
         return Point(x - other.x, y - other.y);
     }
@@ -91,7 +97,10 @@ bool operator!= (const Point& point1, const Point& point2)
     return !(point1 == point2);
 }
 
-class TrackState
+//
+// Data of a round
+//
+struct TrackState
 {
 public:
     Point position;             // Pod position
@@ -117,22 +126,23 @@ public:
 class Track
 {
 private:
-    std::vector<Point> m_checkpoints;
-    TrackState* m_current_state = nullptr;
-    TrackState* m_previous_state = nullptr;;
-    int m_checkpoint_index = 0;
-    bool m_first_round = true;
-    bool m_boosted = false;
-    int m_boost_index = 0;
-    bool m_next_checkpoint_selected = false;
-
+    std::vector<Point> m_checkpoints;               // List of checkpoints. Collected during the first round
+    TrackState* m_current_state = nullptr;          // Data for the state of the current round
+    TrackState* m_previous_state = nullptr;         // Data for the state of the previous round
+    int m_checkpoint_index = 0;                     // What checkpoint are we currently at?
+    bool m_first_round = true;                      // Are we on the first round?
+    bool m_boosted = false;                         // Have we already boosted?
+    int m_boost_index = 0;                          // At what checkpoint do we want to boost?
+    bool m_next_checkpoint_selected = false;        // Used when we have started to move in advance to the next checkpoint 
+                                                    // Are we moving to the next checkpoint before the game has selected it?
+    //
     // Constants
-    float BREAK_DISTANCE = 1200.0f;
-    int PREDICT_DISTANCE = 2000;
-    float TARGET_DISTANCE = 500.0f;
-    float CHECK_ANGLE = 3.0f;
-    int HIT_SPEED = 500;
-    float PI = 3.14159265f;
+    //
+    float BREAK_DISTANCE = 1200.0f;                 // At what distance do we start to slow the thrust
+    int PREDICT_DISTANCE = 2000;                    // At what distance do we start to check if we can start moving to the next checkpoint
+    float CHECK_ANGLE = 3.0f;                       // Angle that is "straight enough"
+    int HIT_SPEED = 500;                            // What speed is fast enough to hit the target if we start moving to another direction
+    float PI = 3.14159265f;                         // Pi!
 
 public:
     ~Track()
@@ -148,6 +158,10 @@ public:
         }
     }
 
+    //
+    // Set incoming data for the current round into our own state structure. 
+    // Move the data we had to be the data for the previous round.
+    //
     void UpdateStatus(int x, int y, int next_checkpoint_x, int next_checkpoint_y, int next_checkpoint_dist, int next_checkpoint_angle)
     {
         if (m_previous_state != nullptr)
@@ -162,12 +176,18 @@ public:
         SetCheckpoint();
     }
 
+    //
+    // Is the input data saying that we are going to the next checkpoint?
+    //
     bool IsNextCheckpoint() const
     {
         return m_checkpoints[m_checkpoint_index] != m_current_state->next_checkpoint;
     }
 
-    int CalculateBoostIndex()
+    //
+    // Calculate what checkpoint index has the longest distance to the next checkpoint
+    //
+    int CalculateBoostIndex() const
     {
         int max_distance = 0.0f;
         int index = 0;
@@ -191,6 +211,10 @@ public:
         return index;
     }
 
+    //
+    // First round: Collect the checkpoints into a list
+    // Following rounds: Update the current checkpoint index
+    //
     void SetCheckpoint()
     {
         if (m_checkpoints.empty())
@@ -230,6 +254,9 @@ public:
         }
     }
 
+    //
+    // Index of the previous checkpoint in the list of checkpoints
+    //
     int GetPreviousCheckpointIndex() const
     {
         int index = m_checkpoint_index - 1;
@@ -241,6 +268,9 @@ public:
         return index;
     }
 
+    //
+    // Index of the next checkpoint in the list of checkpoints
+    //
     int GetNextCheckpointIndex() const
     {
         int index = m_checkpoint_index + 1;
@@ -257,6 +287,9 @@ public:
         return m_checkpoints[GetNextCheckpointIndex()];
     }
 
+    //
+    // Speed is the distance between our current and last positions
+    //
     float GetSpeed() const
     {
         if (m_previous_state == nullptr)
@@ -267,42 +300,23 @@ public:
         return m_current_state->position.Distance(m_previous_state->position);
     }
 
-    bool PredictCheckpointHit(int speed, int angle) const
+    //
+    // Predict if we have enough speed and correct angle to hit the checkpoint if we start moving to the next one in advance
+    //
+    bool PredictCheckpointHit(const int speed, const int angle) const
     {
-        string first_round = m_first_round ? "No" : "OK";
-        string speed_txt = speed > HIT_SPEED ? "OK" : "No";
-        string angle_txt = angle < CHECK_ANGLE ? "OK" : "No";
-        string distance_txt = m_current_state->next_checkpoint_dist < PREDICT_DISTANCE ? "OK" : "No";
-
-        cerr << "Predict first: " << first_round << " Speed: " << speed_txt << " Angle: " << angle_txt << " Distance: " << distance_txt << endl;
         return !m_first_round && speed > HIT_SPEED && angle < CHECK_ANGLE&& m_current_state->next_checkpoint_dist < PREDICT_DISTANCE;
     }
 
+    //
+    // Output our drive string
+    //
     string GetOutputString()
     {
         Point delta = m_current_state->next_checkpoint - m_current_state->position;
 
-        // float angle = atan (delta_y / delta_x);
-        // float distance = sqrt(delta_y * delta_y + delta_x * delta_x);
-
-        // Point last_checkpoint = m_checkpoints[GetPreviousCheckpointIndex()];
-
-        // float distance_last_point = last_checkpoint.Distance(m_current_state->position);
-
         float x_multiplier = delta.x < 0.0f ? -1 : 1;
         float y_multiplier = delta.y < 0.0f ? -1 : 1;
-
-        // cerr << "angle: " <<  angle * 180.0f / PI << "  distance: " << distance << endl;
-        // cerr << "multipliers: (" << x_multiplier << ", " << y_multiplier << ")" << endl;
-        /*
-        float goal_distance = distance - TARGET_DISTANCE;
-        float dir_x = cos(angle) * goal_distance;
-        float dir_y = sin(angle) * goal_distance;
-        float goal_x = x + (x_multiplier) * abs(dir_x);
-        float goal_y = y + (y_multiplier) * abs(dir_y);
-        */
-
-        // cerr << "Goal: (" << goal_x << ", " << goal_y << "), dir: (" << dir_x << ", " << dir_y << ")" << endl;
 
         int thrust = 100;
         int speed = GetSpeed();
@@ -310,42 +324,38 @@ public:
         int angle = abs(m_current_state->next_checkpoint_angle);
         Point goToPoint = m_current_state->next_checkpoint;
 
-        if (m_next_checkpoint_selected || PredictCheckpointHit(speed, angle))
+        if (m_next_checkpoint_selected || PredictCheckpointHit(speed, angle)) // Can we already start going to the next checkpoint?
         {
-            cerr << "Go to next!!!" << endl;
-
             m_next_checkpoint_selected = true;
             goToPoint = GetNextCheckpoint();
             thrust = 20;
         }
-        else if (angle > 90)
+        else if (angle > 90) // Big angle? => End thrust so we can turn faster
         {
-            cerr << "====STOP:" << endl;
             thrust = 0;
         }
-        else if (m_current_state->next_checkpoint_dist < BREAK_DISTANCE)
+        else if (m_current_state->next_checkpoint_dist < BREAK_DISTANCE) // Break before the checkpoint
         {
             thrust = lerp(0, 100, (float)abs(m_current_state->next_checkpoint_dist) / BREAK_DISTANCE);
             cerr << "####BREAK distance:" << m_current_state->next_checkpoint_dist << endl;
         }
-        else if (angle > CHECK_ANGLE)
+        else if (angle > CHECK_ANGLE) // Angle getting larger? Slow down
         {
             float abs_angle = (float)angle;
             thrust = lerp(100, 0, abs_angle / 90.0f);
-            cerr << "####BREAK angle:" << abs_angle << " thrust: " << thrust << endl;
         }
-        else
+        else // Small angle, not too close => Go go go!!!
         {
             thrust = 100;
-            cerr << "***GOGOGO':" << endl;
         }
-
-        cerr << "Speed: " << speed << "angle:" << m_current_state->next_checkpoint_angle << " dist:" << m_current_state->next_checkpoint_dist << endl;
-        // cerr << " dist:" << m_current_state->next_checkpoint_dist << " dist_LP: " << distance_last_point << endl;
-        // cerr << "angle:" << m_current_state->next_checkpoint_angle << " thrust:" << thrust << endl;
 
         string output;
 
+        //
+        // Output our drive commands
+        //
+
+        // Boost if we are at the checkpoint with the longest distance between checkpoints and our angle is small enough
         if (!m_first_round && !m_boosted && m_checkpoint_index == m_boost_index && thrust == 100 && abs(m_current_state->next_checkpoint_angle) < CHECK_ANGLE)
         {
             m_boosted = true;
