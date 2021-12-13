@@ -12,6 +12,12 @@ using namespace std;
 
 int main()
 {
+    int thrust = 100;
+    bool boosted = false;
+    int last_distance = 0;
+    int BREAK_DISTANCE = 600;
+    int MIN_ANGLE = 10;
+    bool apex_reached = false;
 
     // game loop
     while (1) {
@@ -33,9 +39,30 @@ int main()
         // You have to output the target position
         // followed by the power (0 <= thrust <= 100)
         // i.e.: "x y thrust"
-        cerr << "next_checkpoint_angle:" << next_checkpoint_angle << endl;
-        int thrust = abs(next_checkpoint_angle) > 80 ? 20 : 100;
-        cerr << "thrust:" << thrust << endl;
-        cout << next_checkpoint_x << " " << next_checkpoint_y << " " << thrust << endl;
+
+        if (next_checkpoint_dist < BREAK_DISTANCE /*|| abs(next_checkpoint_angle) > MIN_ANGLE*/)
+        {
+            thrust = 0;
+            cerr << "####BREAK:" << endl;
+        }
+        else
+        {
+            thrust = 100;
+            cerr << "***GOGOGO':" << endl;
+        }
+
+        cerr << "angle:" << next_checkpoint_angle << " dist:" << next_checkpoint_dist << " thrust:" << thrust << endl;
+
+        if (!boosted && next_checkpoint_dist > 4000 && thrust == 100 && next_checkpoint_angle == 0)
+        {
+            boosted = true;
+            cout << next_checkpoint_x << " " << next_checkpoint_y << " " << "BOOST" << endl;
+        }
+        else
+        {
+            cout << next_checkpoint_x << " " << next_checkpoint_y << " " << thrust << endl;
+        }
+
+        last_distance = next_checkpoint_dist;
     }
 }
